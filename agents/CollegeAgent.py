@@ -4,7 +4,7 @@ from google.adk.models.google_llm import Gemini
 from google.adk.tools import google_search
 from google.genai import types
 from dotenv import load_dotenv
-import asyncio
+
 
 # Make sure your API key is set in the environment
 load_dotenv()
