@@ -16,13 +16,19 @@ async def main():
         session_id=session_id
     )
 
-    print("✅ College Agent started. Type 'quit, exit, or bye' to exit.\n")
+    intro_content = types.Content(role="user", parts=[types.Part(text="__start__")])
 
+    async for evt_tuple in runner.run_async(
+        user_id=session.user_id,
+        session_id=session.id,
+        new_message=intro_content
+    ):
+        event = evt_tuple[0] if isinstance(evt_tuple, tuple) else evt_tuple
+        if getattr(event, "content", None) and getattr(event.content, "parts", None):
+            for part in event.content.parts:
+                print("College Agent:", part.text.strip())
     while True:
-        user_text = input("\n").strip()
-        if user_text.lower() in ("quit", "exit", "bye"):
-            print("Ending session.")
-            break
+        user_text = input().strip()
 
         content = types.Content(role="user", parts=[types.Part(text=user_text)])
 
@@ -35,10 +41,10 @@ async def main():
             ):
                 event = evt_tuple[0] if isinstance(evt_tuple, tuple) else evt_tuple
                 if getattr(event, "content", None) and getattr(event.content, "parts", None):
-                    for part in event.content.parts:
-                        print()
-                        print("College Agent:", part.text)
-                        print()
+                    for part in event.content.parts: 
+                        print("College Agent:", part.text.strip())      
+                        if "__end_conversation__" in part.text:
+                            return       
         except Exception as e:
             print("Error communicating with agent:", e)
 
