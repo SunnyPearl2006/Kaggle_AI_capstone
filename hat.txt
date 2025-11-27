@@ -1,0 +1,55 @@
+# main.py — minimal interactive launcher
+import asyncio
+import uuid
+from agents.CollegeAgent import College_agent
+from google.adk.runners import InMemoryRunner
+from google.genai import types
+
+async def main():
+    # 1️⃣ create the runner
+    runner = InMemoryRunner(agent=College_agent, app_name="agents")
+
+    # 2️⃣ create session
+    user_id = str(uuid.uuid4())
+    session_id = str(uuid.uuid4())
+    session = await runner.session_service.create_session(
+        app_name=runner.app_name,
+        user_id=user_id,
+        session_id=session_id
+    )
+
+    print("✅ College Agent started. Type 'quit' to exit.\n")
+
+    # 3️⃣ relay loop: user input → agent → print
+    while True:
+        user_text = input("You: ").strip()
+        if user_text.lower() in ("quit", "exit"):
+            print("Ending session.")
+            break
+
+        # Wrap user input in a Content object (safe for ADK)
+        content = types.Content(role="user", parts=[types.Part(text=user_text)])
+
+        # Call agent
+        events = runner.run(
+            user_id=session.user_id,
+            session_id=session.id,
+            new_message=content
+        )
+
+        # Print agent messages
+        printed = False
+        for evt_tuple in events:
+            # Some runners yield (event, meta) tuples
+            event = evt_tuple[0] if isinstance(evt_tuple, tuple) else evt_tuple
+            if getattr(event, "content", None) and getattr(event.content, "parts", None):
+                for part in event.content.parts:
+                    print("College Agent:", part.text)
+                    printed = True
+
+        if not printed:
+            print("College Agent produced no output.")
+
+# Run the main loop
+if __name__ == "__main__":
+    asyncio.run(main())
