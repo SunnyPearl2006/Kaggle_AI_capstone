@@ -1,13 +1,14 @@
-# main.py
 import asyncio
 import uuid
-from agents.CollegeAgent import College_agent
 from google.adk.runners import InMemoryRunner
+from agents.CollegeAgent import CollegeAgent, APP_NAME
 from google.genai import types
 
 async def main():
-    runner = InMemoryRunner(agent=College_agent, app_name="agents")
+    # Runner with memory
+    runner = InMemoryRunner(agent=CollegeAgent, app_name=APP_NAME)
 
+    # Create user/session
     user_id = str(uuid.uuid4())
     session_id = str(uuid.uuid4())
     session = await runner.session_service.create_session(
@@ -15,39 +16,34 @@ async def main():
         user_id=user_id,
         session_id=session_id
     )
+    await runner.memory_service.add_session_to_memory(session)
 
-    intro_content = types.Content(role="user", parts=[types.Part(text="__start__")])
-
-    async for evt_tuple in runner.run_async(
-        user_id=session.user_id,
-        session_id=session.id,
-        new_message=intro_content
-    ):
-        event = evt_tuple[0] if isinstance(evt_tuple, tuple) else evt_tuple
-        if getattr(event, "content", None) and getattr(event.content, "parts", None):
-            for part in event.content.parts:
-                print("College Agent:", part.text.strip())
-    while True:
-        user_text = input().strip()
-
+    # Start conversation with the AI
+    async def send_message(user_text):
         content = types.Content(role="user", parts=[types.Part(text=user_text)])
+        async for evt_tuple in runner.run_async(user_id=session.user_id, session_id=session.id, new_message=content):
+            event = evt_tuple[0] if isinstance(evt_tuple, tuple) else evt_tuple
+            if getattr(event, "content", None) and getattr(event.content, "parts", None):
+                for part in event.content.parts:
+                    text = getattr(part, "text", None)
+                    if text:
+                        print("College Agent:", text.strip())
+                        if "__end_conversation__" in text:
+                            return True
+                    elif getattr(part, "function_call", None):
+                        print("College Agent (function call / JSON):", part.function_call)
+        return False
 
-        # Use run_async + async for instead of run() to avoid loop issues
-        try:
-            async for evt_tuple in runner.run_async(
-                user_id=session.user_id,
-                session_id=session.id,
-                new_message=content
-            ):
-                event = evt_tuple[0] if isinstance(evt_tuple, tuple) else evt_tuple
-                if getattr(event, "content", None) and getattr(event.content, "parts", None):
-                    for part in event.content.parts: 
-                        print("College Agent:", part.text.strip())      
-                        if "__end_conversation__" in part.text:
-                            return       
-        except Exception as e:
-            print("Error communicating with agent:", e)
+    # Intro message
+    await send_message("__start__")
 
-# Proper single asyncio.run call
+    # Conversation loop
+    while True:
+        user_input = input().strip()
+        if not user_input:
+            continue
+        if await send_message(user_input):
+            break
+
 if __name__ == "__main__":
     asyncio.run(main())
