@@ -1,3 +1,4 @@
+# gather all the required imports
 import os
 from google.adk.agents import Agent
 from google.adk.models.google_llm import Gemini
@@ -11,6 +12,7 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     raise EnvironmentError("Please set GOOGLE_API_KEY before running this script.")
 
+# Retry configuration
 retry_config = types.HttpRetryOptions(
     attempts=5,
     exp_base=5,
@@ -18,9 +20,9 @@ retry_config = types.HttpRetryOptions(
     http_status_codes=[429, 500, 503, 504]
 )
 
-# In-memory cache to avoid repeated Google searches
-SCHOOL_STATS_CACHE = {}
-
+# Agent definition
+# tell it to use google search to get stats about school
+# tell it to return results in json for easy parsing
 SchoolStatAgent = Agent(
     name="School_stat_agent",
     model=Gemini(
@@ -29,28 +31,31 @@ SchoolStatAgent = Agent(
     ),
     description="This agent fetches school stats and caches them to speed up repeated queries.",
     instruction="""
-You are given a target school name and application type (first-year or transfer).
+                You are given a target school name and application type (first-year or transfer).
 
-1. Check if the school's data exists in memory (cache). If yes, return immediately:
-   - Plain-text summary (e.g., "Average GPA is 3.8, with ~5 AP/IB classes, SAT 1450, ACT 32.")
-   - JSON for internal comparison.
+                1. Search for the school's data and:
+                 - if application is transfer, only get average transfer gpa and the average number
+                 of completed college credits and if possible average gpa in major related courses.
+                 if you cannnot find it, set that field to not found in the json, do not leave it empty.
+                 - if application is first year, get:
+                    - Average admited GPA
+                    - Average admited SAT/ACT scores
+                    - Average admited AP/IB classes
+                if you cannnot find it, set that field to not found in the json, do not leave it empty.
 
-2. If not cached:
-   - Use Google Search to find: average GPA, average AP/IB classes, SAT and ACT (if available).
-   - Format results as JSON and plain-text summary.
-   - Store them in memory for future queries.
 
-3. Return **both JSON and plain-text summary**, but the agent should only print the summary to the user.
+
+                2. Return **both JSON and plain-text summary**, but the agent should only print the summary to the user.
    
-Example JSON output:
-{
-    "Average GPA": "3.8",
-    "Average AP_IB_classes": 5,
-    "Average SAT score": 1450,
-    "Average ACT score": 32
-}
-Example text summary:
-"The average GPA is 3.8, with around 5 AP/IB classes, average SAT 1450, and ACT 32."
-""",
+                Example JSON output:
+                {
+                    "Average GPA": "3.8",
+                    "Average AP_IB_classes": 5,
+                    "Average SAT score": 1450,
+                    "Average ACT score": 32
+                }
+                Example text summary:
+                "The average GPA is 3.8, with around 5 AP/IB classes, average SAT 1450, and ACT 32."
+                """,
     tools=[google_search]
 )
