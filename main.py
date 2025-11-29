@@ -24,7 +24,7 @@ async def main():
         async for evt_tuple in runner.run_async(user_id=session.user_id, session_id=session.id, new_message=content):
             event = evt_tuple[0] if isinstance(evt_tuple, tuple) else evt_tuple
             if getattr(event, "content", None) and getattr(event.content, "parts", None):
-                for part in event.content.parts:
+                for part in event.content.parts or []:
                     text = getattr(part, "text", None)
                     if text:
                         print("College Agent:", text.strip())
