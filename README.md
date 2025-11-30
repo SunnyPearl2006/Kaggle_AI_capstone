@@ -21,4 +21,4 @@ Workflow:
 1. CollegeAgent will introduce himself and ask for the school, aplication type and the revelent stats.
 2. It will call SchoolStatAgent to get the school's info
 3. It will compare and tell the user what it thinks the user chances are.
-4. If the user shows intent to leave, CollegeAgent will end the session, otherwise the session will keep going
+4. If the user shows intent to leave, CollegeAgent will end the session, otherwise the session will keep going 
